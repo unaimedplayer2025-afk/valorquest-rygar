@@ -37,5 +37,10 @@ const Snd = {
   land() { this.noise(0.06, 0.07, 300, 'lowpass'); },
   fanfare() { this.tone(110, 0.5, 'sawtooth', 0.08, 50); this.noise(0.3, 0.1, 400); },
   roar() { this.noise(0.8, 0.22, 400, 'lowpass'); this.tone(70, 0.9, 'sawtooth', 0.14, 30); },
+  dash() { this.noise(0.12, 0.14, 1200, 'bandpass'); this.tone(220, 0.12, 'sawtooth', 0.06, 80); },
+  charge() { this.tone(180, 0.08, 'square', 0.03, 600); },
+  catch() { this.tone(720, 0.1, 'square', 0.07, 1400); this.noise(0.06, 0.08, 2000, 'highpass'); },
+  spark() { this.noise(0.08, 0.12, 1800, 'bandpass'); },
+  fly() { this.noise(0.08, 0.04, 500, 'lowpass'); },
 };
 export default Snd;

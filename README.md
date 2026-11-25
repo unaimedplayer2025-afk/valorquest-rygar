@@ -8,11 +8,12 @@ Art and setting are from [Valor Quest](https://valorquest.net) by Matthew A. But
 
 ## Controls
 
-- **WASD** or **arrow keys** — move
-- **Space** — jump
-- **F** or **left click** — throw the chained disc (it flies out and returns)
+- **WASD** or **arrow keys** — move (also aim the disc in eight directions)
+- **Space** — tap to jump (variable height). Hold **Space** or **Up** to fly; flight drains the Stamina bar and refills on the ground
+- **Shift** — ground dash
+- **F** or **left click** — throw the chained disc. Hold to charge a bigger piercing throw. Press F as the disc comes back to catch it
 - **M** — mute
-- Phone: left stick to move, JUMP and DISC buttons
+- Phone: left stick to move, FLY, DASH, and DISC
 
 ## Stages
 

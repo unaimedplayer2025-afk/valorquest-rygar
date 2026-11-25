@@ -15,7 +15,9 @@
   .stat img { height:28px; width:auto; }
   #hpWrap, #stWrap { width:180px; height:10px; background:#1a1208; border:1px solid #836022; border-radius:3px; overflow:hidden; }
   #hp { height:100%; width:100%; background:linear-gradient(#c43, #812); }
-  #st { height:100%; width:100%; background:linear-gradient(#3af, #147); }
+  #st { height:100%; width:100%; background:linear-gradient(#3af, #147); transition: background .2s; }
+  #st.fly { background:linear-gradient(#ffe08a, #d48912); }
+  #st.low { background:linear-gradient(#f64, #a20); }
   #gold, #valor, #stageName { font-weight:bold; letter-spacing:1px; font-size:15px; color:#e3b555; }
   #hudTR { top:14px; right:18px; text-align:right; }
   #stageName { font-size:20px; color:#f0e0b8; }
@@ -50,6 +52,7 @@
   .tbtn { position:absolute; right:24px; width:74px; height:74px; border:2px solid #a38032; border-radius:50%; background:rgba(8,15,20,.6); color:#e3b555; font-weight:bold; display:flex; align-items:center; justify-content:center; pointer-events:auto; letter-spacing:1px; }
   #bJump { bottom:24px; right:110px; }
   #bDisc { bottom:24px; right:24px; border-color:#c44; color:#f88; }
+  #bDash { bottom:108px; right:110px; width:62px; height:62px; font-size:12px; }
   @media (pointer:coarse) { #touch { display:block; } #help .desk { display:none; } }
 </style>
 <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js" } }</script>
@@ -75,17 +78,18 @@
   <div class="inner">
     <img class="logo" src="./assets/ui/logo.png" alt="Valor Quest - Forging Chaos Into Power">
     <h2>CHAIN OF DELDYA</h2>
-    <p>A Rygar-style action platformer through the world of Valor Quest. Fight the creatures of Deldya with a chained spiked disc, and face the Fire Drake.</p>
+    <p>A Rygar-style action platformer through the world of Valor Quest. Take to the air, hurl a chained spiked disc, and face the Fire Drake.</p>
     <img id="playBtn" src="./assets/ui/play_now.png" alt="Play now">
     <div id="help">
-      <span class="desk">WASD / ARROWS move &nbsp;·&nbsp; SPACE jump &nbsp;·&nbsp; F or CLICK throw disc &nbsp;·&nbsp; M mute</span>
+      <span class="desk">WASD / ARROWS move &nbsp;·&nbsp; SPACE jump, hold SPACE or UP to fly &nbsp;·&nbsp; SHIFT dash<br>F or CLICK throw disc, HOLD to charge a piercing throw &nbsp;·&nbsp; M mute</span>
     </div>
   </div>
 </div>
 <div id="end"><h1 id="endTitle">CHAMPION</h1><p id="endText"></p><p>PRESS ANY KEY / TAP</p></div>
 <div id="touch">
   <div id="stick"><div id="knob"></div></div>
-  <div id="bJump" class="tbtn">JUMP</div>
+  <div id="bJump" class="tbtn">FLY</div>
+  <div id="bDash" class="tbtn">DASH</div>
   <div id="bDisc" class="tbtn">DISC</div>
 </div>
 <button id="mute" aria-label="mute">&#128266;</button>
