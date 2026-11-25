@@ -1,6 +1,6 @@
 # VALOR QUEST: Chain of Deldya
 
-A Rygar-style action platformer through the world of **Deldya**, built in the browser with Three.js and **Valor Quest** artwork used as-is (no restyling). The hero throws a chained spiked disc, fights the creatures of Deldya, and faces the Fire Drake at the Colossal Arena.
+A Rygar-style action platformer through the world of **Deldya**, built in the browser with Three.js and **Valor Quest** artwork used as-is (no restyling). The knight rides a black dragon, throws a chained spiked disc, fights the creatures of Deldya, and faces the Fire Drake at the Colossal Arena.
 
 Art and setting are from [Valor Quest](https://valorquest.net) by Matthew A. Butcher / Valor Quest LLC. This is a fan action slice, not a substitute for the live text RPG.
 
@@ -9,11 +9,12 @@ Art and setting are from [Valor Quest](https://valorquest.net) by Matthew A. But
 ## Controls
 
 - **WASD** or **arrow keys** — move (also aim the disc in eight directions)
-- **Space** — tap to jump (variable height). Hold **Space** or **Up** to fly; flight drains the Stamina bar and refills on the ground
-- **Shift** — ground dash
-- **F** or **left click** — throw the chained disc. Hold to charge a bigger piercing throw. Press F as the disc comes back to catch it
-- **M** — mute
+- **Space** — tap to jump (variable height). Hold **Space** or **Up** to fly on the dragon; flight drains the Stamina bar and refills on the ground
+- **Shift** — ground dash (a dragon swoop)
+- **F** or **left click** — throw the chained disc from the knight. Hold to charge a bigger piercing throw. Press F as the disc comes back to catch it
+- **M** — mute (music and SFX)
 - Phone: left stick to move, FLY, DASH, and DISC
+- At the start, the dragon eats a rat (about 2–3 seconds). Any key skips the intro.
 
 ## Stages
 
@@ -21,6 +22,19 @@ Art and setting are from [Valor Quest](https://valorquest.net) by Matthew A. But
 2. **Great Nelvo Desert — Impasse Point** — snakes, fire lizards, tentacle crabs, and berserker beetles
 3. **The Mines — Fungus Town & the Rift** — spiders, plant beasts, red demons, and a green drake
 4. **Colossal Arena — The Fire Drake** — a boss fight against the painted fire drake
+
+## The black dragon
+
+There is no black dragon in the public Valor Quest mob art. The mount is a recolor of the side-view **pink drake** (`images/mobs/000008.png`), kept in the original pixel style, with dark scales and a glowing gold eye. Matching bat-wing pieces were added so the mount can flap. Pink-drake enemies stay the original pink art, and the Fire Drake boss is unchanged so it does not look like the player's mount.
+
+The game opens with a short intro: a Valor Quest rat (`images/mobs/000001.png`, the same rat sprite used as an enemy) scurries up, and the dragon lunges, chomps, and gulps. Any key skips it.
+
+## Music
+
+John's tracks, with OGG plus an MP3 fallback chosen through `canPlayType`. Audio unlocks on the first key or tap, and **M** mutes.
+
+- **Title / end screen:** `wadget/audio/title-theme`
+- **Gameplay (and the intro):** `wadget/audio/gameplay`
 
 ## Combat numbers
 

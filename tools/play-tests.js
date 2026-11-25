@@ -36,12 +36,39 @@ async function st(page) { return page.evaluate(() => window.__dbg.snapshot()); }
   if (t0.mode === 'title') pass('title loads'); else fail('title loads', JSON.stringify(t0));
 
   await page.keyboard.press('Space');
-  await page.waitForFunction(() => window.__dbg && window.__dbg.snapshot().mode === 'play', null, { timeout: 8000 });
-  await page.waitForTimeout(400);
+  await page.waitForFunction(() => {
+    const s = window.__dbg && window.__dbg.snapshot();
+    return s && (s.mode === 'intro' || s.mode === 'play');
+  }, null, { timeout: 8000 });
+  const started = await st(page);
+  if (started.mode === 'intro' || started.mode === 'play') pass('start with Space', 'mode=' + started.mode + ' stage=' + started.stageName);
+  else fail('start with Space', JSON.stringify(started));
+
+  // Let the intro reach the chomp, then screenshot it (do not skip early).
+  if (started.mode === 'intro') {
+    await page.waitForFunction(() => {
+      const s = window.__dbg.snapshot();
+      return s.mode === 'play' || (s.introPhase === 'chomp' && s.ratVisible) || (s.introPhase === 'lunge' && s.introT >= 0.95);
+    }, null, { timeout: 4000 });
+  }
+  const chomp = await st(page);
+  await snap(page, '02-chomp');
+  const chompOk = chomp.mode === 'intro' && (
+    chomp.introPhase === 'chomp' || chomp.introPhase === 'gulp' ||
+    (chomp.introPhase === 'lunge' && chomp.ratVisible && (chomp.introT || 0) >= 0.9)
+  );
+  if (chompOk) pass('intro chomp', 'phase=' + chomp.introPhase + ' t=' + (chomp.introT || 0).toFixed(2));
+  else if (chomp.mode === 'play') pass('intro chomp', 'already play (intro elapsed)');
+  else fail('intro chomp', JSON.stringify({ mode: chomp.mode, phase: chomp.introPhase, rat: chomp.ratVisible, t: chomp.introT }));
+
+  if ((await st(page)).mode !== 'play') {
+    await page.waitForFunction(() => window.__dbg.snapshot().mode === 'play', null, { timeout: 4000 });
+  }
+  await page.waitForTimeout(200);
   const t1 = await st(page);
-  if (t1.mode === 'play' && t1.hp > 0) pass('start with Space', 'stage=' + t1.stageName);
-  else fail('start with Space', JSON.stringify(t1));
-  await snap(page, '02-siddun-start');
+  if (t1.mode === 'play' && t1.hp > 0) pass('control after intro', 'stage=' + t1.stageName);
+  else fail('control after intro', JSON.stringify(t1));
+  await snap(page, '03-siddun-start');
 
   const x0 = t1.x;
   await page.keyboard.down('ArrowRight');
@@ -59,7 +86,7 @@ async function st(page) { return page.evaluate(() => window.__dbg.snapshot()); }
   if (t3.vy > 2 || t3.y > 0.3) pass('tap jump', 'y=' + t3.y.toFixed(2) + ' vy=' + t3.vy.toFixed(2));
   else fail('tap jump', JSON.stringify({ y: t3.y, vy: t3.vy }));
   await page.waitForTimeout(700);
-  await snap(page, '03-jump');
+  await snap(page, '04-jump');
 
   // Fly: hold Space
   const sta0 = (await st(page)).sta;
@@ -68,7 +95,7 @@ async function st(page) { return page.evaluate(() => window.__dbg.snapshot()); }
   const t4 = await st(page);
   if (t4.flying && t4.y > 2.4 && t4.sta < sta0 - 5) pass('hold Space to fly', 'y=' + t4.y.toFixed(2) + ' sta=' + t4.sta.toFixed(1) + ' flying=' + t4.flying);
   else fail('hold Space to fly', JSON.stringify({ flying: t4.flying, y: t4.y, sta: t4.sta, sta0 }));
-  await snap(page, '04-fly');
+  await snap(page, '05-fly');
   await page.keyboard.up('Space');
   await page.waitForTimeout(250);
 
@@ -82,10 +109,11 @@ async function st(page) { return page.evaluate(() => window.__dbg.snapshot()); }
   const t5 = await st(page);
   if ((t5.disc === 'fly' || t5.disc === 'return') && t5.discVY > 2) pass('throw upward while flying', 'disc=' + t5.disc + ' vy=' + t5.discVY.toFixed(2));
   else fail('throw upward while flying', JSON.stringify({ disc: t5.disc, vx: t5.discVX, vy: t5.discVY }));
-  await snap(page, '05-throw-up');
+  await snap(page, '06-throw-up');
   await page.keyboard.up('ArrowUp');
   await page.keyboard.up('Space');
-  await page.waitForTimeout(800);
+  await page.waitForFunction(() => window.__dbg.snapshot().disc === 'held', null, { timeout: 2000 });
+  await page.waitForTimeout(120);
 
   // Throw down while flying
   await page.keyboard.down('Space');
@@ -97,7 +125,7 @@ async function st(page) { return page.evaluate(() => window.__dbg.snapshot()); }
   const t6 = await st(page);
   if ((t6.disc === 'fly' || t6.disc === 'return') && t6.discVY < -2) pass('throw downward while flying', 'disc=' + t6.disc + ' vy=' + t6.discVY.toFixed(2));
   else fail('throw downward while flying', JSON.stringify({ disc: t6.disc, vx: t6.discVX, vy: t6.discVY, flying: t6.flying }));
-  await snap(page, '06-throw-down');
+  await snap(page, '07-throw-down');
   await page.keyboard.up('ArrowDown');
   await page.keyboard.up('Space');
   await page.waitForFunction(() => window.__dbg.snapshot().disc === 'held', null, { timeout: 2000 });
@@ -126,7 +154,7 @@ async function st(page) { return page.evaluate(() => window.__dbg.snapshot()); }
   const t8 = await st(page);
   if (t8.charged && t8.pierce && (t8.disc === 'fly' || t8.disc === 'return')) pass('charged pierce throw', 'state=' + t8.disc + ' vx=' + (t8.discVX || 0).toFixed(1));
   else fail('charged pierce throw', JSON.stringify({ disc: t8.disc, charged: t8.charged, pierce: t8.pierce }));
-  await snap(page, '07-charge');
+  await snap(page, '08-charge');
   await page.waitForTimeout(800);
 
   // Land, then dash
@@ -145,7 +173,7 @@ async function st(page) { return page.evaluate(() => window.__dbg.snapshot()); }
   if (t9.dashT > 0 || Math.abs(t9.vx) > 10 || Math.abs(t9.x - d0.x) > 0.8) {
     pass('ground dash (Shift)', 'vx=' + t9.vx.toFixed(2) + ' x ' + d0.x.toFixed(2) + ' -> ' + t9.x.toFixed(2));
   } else fail('ground dash (Shift)', JSON.stringify({ before: { x: d0.x, onGround: d0.onGround, sta: d0.sta }, after: t9 }));
-  await snap(page, '08-dash');
+  await snap(page, '09-dash');
   await page.waitForTimeout(300);
 
   // Combat stretch
@@ -165,7 +193,7 @@ async function st(page) { return page.evaluate(() => window.__dbg.snapshot()); }
   await page.keyboard.up('ArrowRight');
   await page.waitForTimeout(500);
   const t10 = await st(page);
-  await snap(page, '09-combat');
+  await snap(page, '10-combat');
   pass('combat stretch', 'x=' + t10.x.toFixed(1) + ' y=' + t10.y.toFixed(1) + ' enemies=' + t10.enemies + '/' + t10.totalEnemies + ' gold=' + t10.gold + ' hp=' + t10.hp);
 
   const real = errs.filter(e => !/The play\(\) request was interrupted|AbortError/.test(e));

@@ -193,8 +193,19 @@ const hero = {
   coyote: 0, jumpBuf: 0, jumpTime: 0, jumpHeld: false,
   dashT: 0, dashCool: 0, dashI: 0, jumpCut: false,
   landSquash: 0, bob: 0, lean: 0, stretch: 1,
-  w: 0.75, h: 1.85,
+  w: 1.35, h: 1.6,
 };
+// Recolored VQ pink drake (mobs/000008). Knight sits on its back. Hurtbox is the body+rider, not the full wings/tail.
+const MOUNT = {
+  dw: 2.36, dh: 1.76, kw: 0.52, kh: 1.16,
+  knightX: 0.14, knightY: 1.02, wingX: -0.10, wingY: 1.04,
+};
+const intro = {
+  t: 0, phase: '', ratX: 0, ratY: 0, lunge: 0, gulp: 0, ratScale: 1,
+  chomped: false, gulped: false, ratVisible: false, facing: 1,
+};
+function handX() { return hero.x + hero.facing * 0.62; }
+function handY() { return hero.y + 1.42; }
 const disc = {
   state: 'held', x: 0, y: 0, vx: 0, vy: 0, hits: new Set(), t: 0,
   charged: false, charge: 0, charging: false, pierce: false, caught: false,
@@ -208,7 +219,7 @@ const G = {
 const CHAIN_N = 22;
 const TRAIL_N = 12;
 const SPARK_N = 80;
-let heroRoot, heroMesh, wingL, wingR, thrustLight, discMesh, chain, trailMesh, sparkMesh, stageRoot, shadowMesh;
+let heroRoot, heroMesh, dragonMesh, introRat, wingL, wingR, thrustLight, discMesh, chain, trailMesh, sparkMesh, stageRoot, shadowMesh;
 const trailPos = [];
 const sparks = [];
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3();
@@ -453,7 +464,7 @@ function throwDisc(charge) {
   const speed = charged ? 26 : 22;
   disc.state = 'fly'; disc.t = 0; disc.hits = new Set();
   disc.charged = charged; disc.pierce = charged; disc.caught = false;
-  disc.x = hero.x + dir.x * 0.6; disc.y = hero.y + 1.05 + dir.y * 0.25;
+  disc.x = handX() + dir.x * 0.35; disc.y = handY() + dir.y * 0.25;
   disc.vx = dir.x * speed; disc.vy = dir.y * speed;
   trailPos.length = 0;
   Snd.throw();
@@ -467,18 +478,18 @@ function catchDisc() {
   hero.sta = Math.min(hero.maxSta, hero.sta + 5);
   disc.caught = true;
   Snd.catch();
-  burst(hero.x + hero.facing * 0.4, hero.y + 1.05, 8, 4, [1, 0.95, 0.6]);
+  burst(handX(), handY(), 8, 4, [1, 0.95, 0.6]);
 }
 
 function updateDisc(dt) {
-  const handX = hero.x + hero.facing * 0.45;
-  const handY = hero.y + 1.05;
+  const hx = handX();
+  const hy = handY();
   if (disc.state === 'held') {
     if (disc.charging) {
       disc.charge = Math.min(1, disc.charge + dt * 1.35);
       if (disc.charge >= 1) throwDisc(1);
     }
-    disc.x = handX; disc.y = handY;
+    disc.x = hx; disc.y = hy;
     const pulse = disc.charging ? 1 + disc.charge * 0.55 : 1;
     discMesh.position.set(disc.x, disc.y, 0.35);
     discMesh.scale.setScalar(pulse);
@@ -553,7 +564,7 @@ function updateDisc(dt) {
     }
   }
 
-  const dist = Math.hypot(disc.x - handX, disc.y - handY);
+  const dist = Math.hypot(disc.x - hx, disc.y - hy);
   if (disc.state === 'fly') {
     const maxR = disc.charged ? 13 : 8.8;
     const maxT = disc.charged ? 0.7 : 0.42;
@@ -562,7 +573,7 @@ function updateDisc(dt) {
     }
   }
   if (disc.state === 'return') {
-    const a = Math.atan2(handY - disc.y, handX - disc.x);
+    const a = Math.atan2(hy - disc.y, hx - disc.x);
     const sp = 32;
     disc.vx = Math.cos(a) * sp; disc.vy = Math.sin(a) * sp;
     const canCatch = dist < 1.85;
@@ -571,7 +582,7 @@ function updateDisc(dt) {
   }
 
   // chain
-  const from = new THREE.Vector3(handX, handY, 0.2), to = new THREE.Vector3(disc.x, disc.y, 0.3);
+  const from = new THREE.Vector3(hx, hy, 0.2), to = new THREE.Vector3(disc.x, disc.y, 0.3);
   const sag = Math.min(1.15, from.distanceTo(to) * 0.1);
   let prev = from.clone();
   for (let i = 0; i < CHAIN_N; i++) {
@@ -706,8 +717,7 @@ function updateHero(dt) {
     disc.charging = true; disc.charge = 0;
   }
   if (input.throwPressed && disc.state === 'return') {
-    const handX = hero.x + hero.facing * 0.45, handY = hero.y + 1.05;
-    if (Math.hypot(disc.x - handX, disc.y - handY) < 2.2) catchDisc();
+    if (Math.hypot(disc.x - handX(), disc.y - handY()) < 2.2) catchDisc();
   }
   if (input.throwReleased && disc.charging && disc.state === 'held') {
     const c = disc.charge; disc.charging = false;
@@ -764,20 +774,118 @@ function checkAdvance() {
   }
 }
 
+function clearInput() {
+  input.left = input.right = input.up = input.down = false;
+  input.jump = input.throw = input.dash = false;
+  input.jumpPressed = input.throwPressed = input.throwReleased = input.dashPressed = false;
+}
+
+function beginPlay() {
+  intro.ratVisible = false; intro.lunge = 0; intro.gulp = 0; intro.phase = 'done'; intro.ratScale = 0;
+  if (introRat) introRat.visible = false;
+  setStageActorsVisible(true);
+  clearInput();
+  G.mode = 'play';
+  Snd.setScene('game');
+}
+
+function skipIntro() {
+  if (G.mode !== 'intro') return;
+  beginPlay();
+}
+
+function setStageActorsVisible(v) {
+  for (const e of G.enemies) if (e.mesh) e.mesh.visible = v && !e.dead;
+}
+
+function startIntro() {
+  intro.t = 0; intro.phase = 'scurry'; intro.chomped = false; intro.gulped = false;
+  intro.ratVisible = true; intro.lunge = 0; intro.gulp = 0; intro.facing = -1; intro.ratScale = 1;
+  intro.ratX = hero.x + 3.6; intro.ratY = 0;
+  hero.facing = 1; hero.x = 3; hero.y = 0; hero.vx = 0; hero.vy = 0; hero.flying = false;
+  G.camX = hero.x + 1.15; G.camY = 2.45;
+  setStageActorsVisible(false);
+  if (introRat) introRat.visible = true;
+  showMsg('', 'Any key to skip', 2.6);
+}
+
+function updateIntro(dt) {
+  intro.t += dt;
+  const t = intro.t;
+  const mouthX = hero.x + 1.22;
+  const startX = hero.x + 3.6;
+  if (t < 0.7) {
+    intro.phase = 'scurry';
+    const k = t / 0.7;
+    const ease = 1 - (1 - k) * (1 - k);
+    intro.ratX = startX + (mouthX + 0.15 - startX) * ease;
+    intro.ratY = Math.abs(Math.sin(t * 20)) * 0.14;
+    intro.lunge = 0;
+    intro.ratScale = 1;
+  } else if (t < 1.05) {
+    intro.phase = 'lunge';
+    const k = (t - 0.7) / 0.35;
+    intro.lunge = 0.15 + Math.sin(Math.min(1, k) * Math.PI) * 0.7;
+    intro.ratX = mouthX + 0.12 - k * 0.28;
+    intro.ratY = 0.18 + k * 0.35;
+    intro.ratScale = 1 - k * 0.15;
+  } else if (t < 2.1) {
+    const g = t - 1.05;
+    if (!intro.chomped) {
+      intro.chomped = true;
+      intro.phase = 'chomp';
+      Snd.chomp();
+      G.shake = 0.62;
+      burst(hero.x + intro.lunge + 1.15, hero.y + 0.8, 28, 8, [0.75, 0.28, 0.12]);
+      burst(hero.x + intro.lunge + 1.15, hero.y + 0.8, 14, 6, [1, 0.82, 0.35]);
+    } else if (t >= 1.45) {
+      intro.phase = 'gulp';
+      if (!intro.gulped) { intro.gulped = true; Snd.gulp(); }
+    } else {
+      intro.phase = 'chomp';
+    }
+    // keep the rat in the jaws briefly, shrinking into the mouth
+    if (g < 0.28) {
+      intro.ratVisible = true;
+      intro.ratX = mouthX - 0.15 + intro.lunge * 0.2;
+      intro.ratY = 0.55 + (1 - g / 0.28) * 0.1;
+      intro.ratScale = Math.max(0.05, 0.7 - g * 2.4);
+    } else {
+      intro.ratVisible = false;
+      intro.ratScale = 0;
+    }
+    intro.lunge = 0.55 * Math.max(0, 1 - g * 1.5);
+    intro.gulp = Math.sin(g * 9) * 0.09 * Math.max(0, 1 - g * 0.65);
+  } else if (t < 2.55) {
+    intro.phase = 'settle';
+    intro.lunge *= 0.8;
+    intro.gulp *= 0.8;
+    intro.ratVisible = false;
+  } else {
+    beginPlay();
+  }
+}
+
 function startGame() {
-  Snd.start(); Snd.fanfare();
+  Snd.start();
+  Snd.setScene('game');
   document.getElementById('title').style.display = 'none';
   document.getElementById('end').style.display = 'none';
-  G.mode = 'play'; G.gold = 0; G.valor = 0; G.win = false;
+  G.gold = 0; G.valor = 0; G.win = false;
   loadStage(0, true);
+  G.mode = 'intro';
+  startIntro();
 }
 
 function retryOrAdvance() {
   if (G.mode === 'title') { startGame(); return; }
+  if (G.mode === 'intro') { skipIntro(); return; }
   if (G.mode === 'end') {
     document.getElementById('end').style.display = 'none';
     document.getElementById('title').style.display = 'flex';
-    G.mode = 'title'; hud(); return;
+    G.mode = 'title';
+    Snd.setScene('title');
+    hud(); return;
   }
   if (G.mode === 'dead') { G.mode = 'play'; G.deadT = 0; loadStage(G.stage, true); }
 }
@@ -792,13 +900,14 @@ function bindInput() {
     ShiftLeft: 'dash', ShiftRight: 'dash', KeyC: 'dash',
   };
   addEventListener('keydown', (e) => {
+    Snd.start();
     if (e.code === 'KeyM') {
-      Snd.muted = !Snd.muted;
-      document.getElementById('mute').textContent = Snd.muted ? '🔇' : '🔊';
+      const muted = Snd.toggleMute();
+      document.getElementById('mute').textContent = muted ? '🔇' : '🔊';
       e.preventDefault(); return;
     }
     if (G.mode !== 'play') {
-      if (e.code === 'Space' || e.code === 'Enter' || e.key.length === 1) { e.preventDefault(); retryOrAdvance(); }
+      if (e.code === 'Space' || e.code === 'Enter' || e.key.length === 1 || e.code === 'Escape' || e.code === 'ShiftLeft') { e.preventDefault(); retryOrAdvance(); }
       return;
     }
     const k = map[e.code];
@@ -825,8 +934,10 @@ function bindInput() {
   addEventListener('mouseup', () => { if (input.throw) input.throwReleased = true; input.throw = false; });
   document.getElementById('playBtn').addEventListener('click', (e) => { e.stopPropagation(); Snd.start(); startGame(); });
   document.getElementById('mute').addEventListener('click', (e) => {
-    e.stopPropagation(); Snd.muted = !Snd.muted;
-    document.getElementById('mute').textContent = Snd.muted ? '🔇' : '🔊';
+    e.stopPropagation();
+    Snd.start();
+    const muted = Snd.toggleMute();
+    document.getElementById('mute').textContent = muted ? '🔇' : '🔊';
   });
   const stick = document.getElementById('stick'), knob = document.getElementById('knob');
   function stickAt(ev) {
@@ -864,63 +975,107 @@ function snapshot() {
     enemies: G.enemies.filter(e => !e.dead).length, totalEnemies: G.enemies.length,
     dead: hero.dead, win: G.win, length: G.length, dashT: hero.dashT, dashCool: hero.dashCool,
     aimX: hero.aimX, aimY: hero.aimY, camX: G.camX, camY: G.camY,
+    introPhase: intro.phase, introT: intro.t, ratVisible: intro.ratVisible, ratScale: intro.ratScale,
   };
 }
 
 function makeWings() {
-  const shape = new THREE.Shape();
-  shape.moveTo(0, 0);
-  shape.bezierCurveTo(0.12, 0.42, 0.62, 0.72, 1.28, 0.28);
-  shape.bezierCurveTo(1.05, 0.08, 0.72, -0.02, 1.02, -0.42);
-  shape.bezierCurveTo(0.55, -0.08, 0.22, -0.12, 0, -0.16);
-  shape.closePath();
-  const geo = new THREE.ShapeGeometry(shape);
-  const mat = new THREE.MeshBasicMaterial({
-    color: 0xffe8a8, transparent: true, opacity: 0, side: THREE.DoubleSide,
-    depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
-  });
-  wingL = new THREE.Mesh(geo, mat.clone());
-  wingR = new THREE.Mesh(geo, mat.clone());
-  wingL.position.set(-0.16, 0.42, 0.16);
-  wingL.scale.set(-1.15, 1.15, 1);
-  wingR.position.set(0.16, 0.42, 0.16);
-  wingR.scale.set(1.15, 1.15, 1);
-  wingL.renderOrder = wingR.renderOrder = 4;
+  const tex = TEX['./assets/hero/dragon-wing.png'];
+  const ww = 1.55, hh = 1.22;
+  function one(scaleX, scaleY, z) {
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.08, side: THREE.DoubleSide, depthWrite: false });
+    const geo = new THREE.PlaneGeometry(ww, hh);
+    // Shoulder is near the right edge of the sprite; put that at the local origin so flaps pivot correctly.
+    geo.translate(-ww * 0.44, 0.02, 0);
+    const m = new THREE.Mesh(geo, mat);
+    m.scale.set(scaleX, scaleY, 1);
+    m.position.set(MOUNT.wingX, MOUNT.wingY, z);
+    m.renderOrder = 2;
+    return m;
+  }
+  wingL = one(1, 1, 0.14);
+  wingR = one(0.92, -0.88, -0.16);
   heroRoot.add(wingL, wingR);
 }
 
 function presentHero(dt) {
   const spd = Math.abs(hero.vx);
   if (hero.onGround && spd > 0.4) hero.bob += dt * (8 + spd * 1.4);
-  const bobY = (hero.onGround && !hero.dashT ? Math.abs(Math.sin(hero.bob)) * 0.07 * Math.min(1, spd / 5) : 0);
-  const flyBob = hero.flying ? Math.sin(G.time * 9) * 0.05 : 0;
-  const wantLean = hero.dead ? 1.15 : (hero.dashT > 0 ? hero.facing * 0.18 : hero.vx * 0.035 + (hero.flying ? -hero.facing * 0.04 : 0));
+  const walkBob = (hero.onGround && !hero.dashT ? Math.abs(Math.sin(hero.bob)) * 0.06 * Math.min(1, spd / 5) : 0);
+  const flyBob = hero.flying ? Math.sin(G.time * 9) * 0.06 : 0;
+  const gulp = (G.mode === 'intro' ? intro.gulp : 0);
+  const wantLean = hero.dead ? 0.7 : (hero.dashT > 0 ? hero.facing * 0.28 : hero.vx * 0.03 + (hero.flying ? -hero.facing * 0.05 : 0));
   hero.lean += (wantLean - hero.lean) * Math.min(1, 14 * dt);
   let sy = 1, sx = 1;
-  if (hero.landSquash > 0) { sy = 1 - hero.landSquash * 0.35; sx = 1 + hero.landSquash * 0.28; }
-  else if (!hero.onGround && hero.vy > 2) { sy = 1.12; sx = 0.9; }
-  else if (hero.flying) { sy = 1.04 + Math.sin(G.time * 10) * 0.03; sx = 0.96; }
+  if (hero.landSquash > 0) { sy = 1 - hero.landSquash * 0.28; sx = 1 + hero.landSquash * 0.22; }
+  else if (hero.dashT > 0) { sy = 0.92; sx = 1.12; }
+  else if (!hero.onGround && hero.vy > 2 && !hero.flying) { sy = 1.08; sx = 0.92; }
+  else if (hero.flying) { sy = 1.02 + Math.sin(G.time * 10) * 0.02; sx = 0.98; }
+  if (G.mode === 'intro' && intro.phase === 'lunge') { sx += 0.12; sy -= 0.06; }
+  if (G.mode === 'intro' && (intro.phase === 'chomp' || intro.phase === 'gulp')) { sy += gulp; sx -= gulp * 0.4; }
   hero.stretch += (1 - hero.stretch) * Math.min(1, 10 * dt);
   sy *= hero.stretch;
-  heroRoot.position.set(hero.x, hero.y + hero.h / 2 * sy + bobY + flyBob, 0);
+  const lunge = (G.mode === 'intro' ? intro.lunge * hero.facing : 0);
+  heroRoot.position.set(hero.x + lunge, hero.y + walkBob + flyBob, 0);
   heroRoot.scale.set(hero.facing * sx, sy, 1);
-  heroRoot.rotation.z = hero.dead ? 1.2 * Math.min(1, G.deadT) : hero.lean * hero.facing;
-  heroMesh.material.opacity = hero.hurtT > 0 && Math.sin(G.time * 30) > 0 ? 0.4 : 1;
+  heroRoot.rotation.z = hero.dead ? 0.9 * Math.min(1, G.deadT) : hero.lean * hero.facing;
+  const blink = hero.hurtT > 0 && Math.sin(G.time * 30) > 0 ? 0.4 : 1;
+  heroMesh.material.opacity = blink;
   heroMesh.material.transparent = true;
-  const wingOp = hero.flying ? 0.95 + Math.sin(G.time * 14) * 0.08 : Math.max(0, (wingL.material.opacity || 0) - dt * 3);
-  const flap = hero.flying ? Math.sin(G.time * 14) * 0.28 : 0;
-  const wingScale = hero.flying ? 1.15 + Math.sin(G.time * 14) * 0.08 : 1.0;
-  wingL.material.opacity = wingOp; wingR.material.opacity = wingOp;
-  wingL.rotation.z = 0.18 + flap; wingR.rotation.z = -0.18 - flap;
-  wingL.scale.set(-wingScale, wingScale, 1); wingR.scale.set(wingScale, wingScale, 1);
-  shadowMesh.position.set(hero.x, 0.02, 0.1);
-  const sh = hero.dead ? 0.3 : Math.max(0.25, 1 - hero.y * 0.08);
+  if (dragonMesh) dragonMesh.material.opacity = blink;
+  // knight seated on the saddle; tiny rider bob independent of the mount squash
+  heroMesh.position.set(MOUNT.knightX, MOUNT.knightY + MOUNT.kh / 2 + (hero.flying ? Math.sin(G.time * 9) * 0.02 : 0), 0.12);
+  if (dragonMesh) dragonMesh.position.set(0, MOUNT.dh / 2, 0);
+
+  const flapSpd = hero.flying ? 14 : (hero.onGround && spd > 0.5 ? 9 : 3.2);
+  const flapAmt = hero.flying ? 0.48 : (hero.onGround && spd > 0.5 ? 0.12 : 0.06);
+  const flap = Math.sin(G.time * flapSpd) * flapAmt;
+  const swoop = hero.dashT > 0 ? -0.7 : (G.mode === 'intro' && intro.phase === 'lunge' ? -0.25 : 0);
+  const rest = hero.flying ? 0.22 : 0.08;
+  wingL.rotation.z = rest + flap + swoop;
+  wingR.rotation.z = rest * 0.6 + flap * 0.85 + swoop;
+  wingL.visible = wingR.visible = true;
+  const wscale = hero.flying ? 1 + Math.sin(G.time * flapSpd) * 0.04 : 1;
+  wingL.scale.set(wscale, 1, 1);
+  wingR.scale.set(0.92 * wscale, -0.88, 1);
+
+  if (G.mode === 'intro') {
+    discMesh.visible = false;
+    if (chain) chain.visible = false;
+  } else if (G.mode === 'title' && disc.state === 'held') {
+    disc.x = handX(); disc.y = handY();
+    discMesh.position.set(disc.x, disc.y, 0.35);
+    discMesh.visible = true;
+  }
+  if (introRat) {
+    introRat.visible = !!intro.ratVisible;
+    if (intro.ratVisible) {
+      introRat.position.set(intro.ratX, intro.ratY + 0.52 * intro.ratScale, 0.45);
+      introRat.scale.set(intro.facing * intro.ratScale, intro.ratScale, 1);
+      introRat.renderOrder = 6;
+    }
+  }
+  shadowMesh.position.set(hero.x + lunge * 0.4, 0.02, 0.1);
+  const sh = hero.dead ? 0.3 : Math.max(0.45, 1.55 - hero.y * 0.08);
   shadowMesh.scale.setScalar(sh);
 }
 
 function presentCam(dt) {
   const halfW = (camera.right - camera.left) / 2;
   const halfH = (camera.top - camera.bottom) / 2;
+  if (G.mode === 'intro') {
+    const tx = hero.x + 1.05 + intro.lunge * 0.4;
+    const ty = 2.2;
+    G.camX += (tx - G.camX) * Math.min(1, 6 * dt);
+    G.camY += (ty - G.camY) * Math.min(1, 6 * dt);
+    const sh = G.shake > 0 ? (Math.random() - 0.5) * G.shake * 0.55 : 0;
+    const shY = G.shake > 0 ? (Math.random() - 0.5) * G.shake * 0.35 : 0;
+    G.shake = Math.max(0, G.shake - dt * 2.4);
+    camera.position.x = G.camX + sh;
+    camera.position.y = G.camY + shY;
+    camera.lookAt(G.camX, G.camY, 0);
+    return;
+  }
   const lookX = hero.facing * 2.3 + hero.vx * 0.18;
   const lookY = hero.flying ? 0.7 : hero.vy * 0.06;
   let tx = hero.x + lookX;
@@ -938,7 +1093,7 @@ function presentCam(dt) {
 }
 
 async function boot() {
-  const urls = new Set(['./assets/hero/knight.png']);
+  const urls = new Set(['./assets/hero/knight.png', './assets/hero/black-dragon.png', './assets/hero/dragon-wing.png']);
   for (const k of Object.values(KINDS)) urls.add(k.file);
   for (const s of STAGES) { urls.add(s.bg); urls.add(s.bg2); if (s.map) urls.add(s.map); }
   await Promise.all([...urls].map(async (u) => {
@@ -946,11 +1101,20 @@ async function boot() {
   }));
 
   heroRoot = new THREE.Group();
-  heroMesh = billboard(TEX['./assets/hero/knight.png'], 0.8, 1.85);
-  heroRoot.add(heroMesh);
+  dragonMesh = billboard(TEX['./assets/hero/black-dragon.png'], MOUNT.dw, MOUNT.dh);
+  dragonMesh.position.set(0, MOUNT.dh / 2, 0);
+  heroMesh = billboard(TEX['./assets/hero/knight.png'], MOUNT.kw, MOUNT.kh);
+  heroMesh.position.set(MOUNT.knightX, MOUNT.knightY + MOUNT.kh / 2, 0.12);
+  heroMesh.renderOrder = 3;
+  dragonMesh.renderOrder = 1;
+  heroRoot.add(dragonMesh);
   makeWings();
+  heroRoot.add(heroMesh);
   scene.add(heroRoot);
-  shadowMesh = new THREE.Mesh(new THREE.CircleGeometry(0.42, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false }));
+  introRat = billboard(TEX['./assets/mobs/rat.png'], 1.05, 1.08);
+  introRat.visible = false;
+  scene.add(introRat);
+  shadowMesh = new THREE.Mesh(new THREE.CircleGeometry(0.55, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false }));
   shadowMesh.rotation.x = -Math.PI / 2; scene.add(shadowMesh);
   discMesh = buildDisc(1); scene.add(discMesh);
   makeChain(); makeTrail(); makeSparks();
@@ -982,11 +1146,16 @@ function loop(now) {
   }
   G.time += dt;
   if (G.msgT > 0) { G.msgT -= dt; if (G.msgT <= 0) { document.getElementById('msg').textContent = ''; document.getElementById('sub').textContent = ''; } }
+  if (G.mode === 'title' || G.mode === 'end') Snd.setScene('title');
+  else Snd.setScene('game');
+  Snd.update(dt);
   if (G.mode === 'play') {
     updateHero(dt);
     updateDisc(dt);
     updateEnemies(dt);
     checkAdvance();
+  } else if (G.mode === 'intro') {
+    updateIntro(dt);
   } else if (G.mode === 'dead') {
     G.deadT += dt;
     updateDisc(dt);
