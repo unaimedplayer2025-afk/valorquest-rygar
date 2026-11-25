@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VALOR QUEST: Chain of Deldya</title>
+<meta name="description" content="A Rygar-style action platformer through Deldya, using Valor Quest artwork. Throw a chained spiked disc and become Champion.">
+<link rel="icon" href="./assets/ui/logo.png">
+<style>
+  html, body { margin:0; padding:0; background:#080f14; color:#dccfbf; font-family: Georgia, "Palatino Linotype", serif; overflow:hidden; height:100%; touch-action:none; }
+  #c { display:block; width:100%; height:100%; }
+  .hud { position:fixed; z-index:5; pointer-events:none; user-select:none; }
+  #hudTL { top:14px; left:16px; display:flex; flex-direction:column; gap:6px; }
+  .stat { display:flex; align-items:center; gap:8px; text-shadow:0 2px 4px #000; }
+  .stat img { height:28px; width:auto; }
+  #hpWrap, #stWrap { width:180px; height:10px; background:#1a1208; border:1px solid #836022; border-radius:3px; overflow:hidden; }
+  #hp { height:100%; width:100%; background:linear-gradient(#c43, #812); }
+  #st { height:100%; width:100%; background:linear-gradient(#3af, #147); }
+  #gold, #valor, #stageName { font-weight:bold; letter-spacing:1px; font-size:15px; color:#e3b555; }
+  #hudTR { top:14px; right:18px; text-align:right; }
+  #stageName { font-size:20px; color:#f0e0b8; }
+  #stageSub { font-size:13px; color:#bba; letter-spacing:1px; }
+  #bossHud { display:none; left:50%; transform:translateX(-50%); bottom:28px; width:min(520px, 70vw); text-align:center; }
+  #bossHud b { color:#e3b555; letter-spacing:2px; font-size:14px; }
+  #bossWrap { margin-top:6px; height:12px; background:#1a0808; border:1px solid #a33; border-radius:3px; overflow:hidden; }
+  #bossHp { height:100%; width:100%; background:linear-gradient(#e62,#810); }
+  #msg { top:42%; left:0; right:0; text-align:center; font-size:28px; color:#f5e6c0; letter-spacing:2px; text-shadow:0 3px 10px #000; }
+  #sub { top:50%; left:0; right:0; text-align:center; font-size:16px; color:#ccc; }
+  #hurt { position:fixed; inset:0; background:rgba(120,0,0,.35); opacity:0; pointer-events:none; z-index:4; }
+  #title {
+    position:fixed; inset:0; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+    background:#080f14 center top / cover no-repeat;
+    background-image:url('./assets/bg/title-keyart.jpg');
+  }
+  #title .veil { position:absolute; inset:0; background:linear-gradient(to top, rgba(8,15,20,.92) 0%, rgba(8,15,20,.35) 42%, rgba(8,15,20,.2) 100%); }
+  #title .inner { position:relative; z-index:1; text-align:center; padding:0 20px 36px; }
+  #title .logo { width:min(560px, 86vw); height:auto; filter:drop-shadow(0 6px 18px #000); }
+  #title h2 { margin:10px 0 4px; color:#e3b555; letter-spacing:6px; font-size:clamp(16px, 3vw, 26px); }
+  #title p { margin:0 auto 16px; max-width:640px; color:#dccfbf; font-size:clamp(14px, 2vw, 18px); line-height:1.4; text-shadow:0 2px 8px #000; }
+  #playBtn { width:min(280px, 70vw); height:auto; cursor:pointer; pointer-events:auto; filter:drop-shadow(0 4px 12px #000); transition:transform .15s; }
+  #playBtn:hover { transform:scale(1.05); }
+  #help { margin-top:14px; font-size:13px; color:#bbb; letter-spacing:1px; }
+  #end { position:fixed; inset:0; z-index:9; display:none; align-items:center; justify-content:center; flex-direction:column; background:rgba(8,15,20,.78); text-align:center; }
+  #end h1 { color:#e3b555; letter-spacing:4px; font-size:40px; margin:0 0 10px; }
+  #end p { color:#dccfbf; font-size:18px; }
+  #mute { position:fixed; right:14px; bottom:14px; z-index:12; pointer-events:auto; background:rgba(8,15,20,.7); color:#e3b555; border:1px solid #836022; border-radius:8px; padding:6px 10px; cursor:pointer; }
+  #touch { display:none; position:fixed; left:0; right:0; bottom:0; height:160px; z-index:11; pointer-events:none; }
+  #stick { position:absolute; left:24px; bottom:24px; width:110px; height:110px; border:2px solid #836022; border-radius:50%; background:rgba(8,15,20,.4); pointer-events:auto; }
+  #knob { position:absolute; left:35px; top:35px; width:40px; height:40px; border-radius:50%; background:rgba(227,181,85,.7); }
+  .tbtn { position:absolute; right:24px; width:74px; height:74px; border:2px solid #a38032; border-radius:50%; background:rgba(8,15,20,.6); color:#e3b555; font-weight:bold; display:flex; align-items:center; justify-content:center; pointer-events:auto; letter-spacing:1px; }
+  #bJump { bottom:24px; right:110px; }
+  #bDisc { bottom:24px; right:24px; border-color:#c44; color:#f88; }
+  @media (pointer:coarse) { #touch { display:block; } #help .desk { display:none; } }
+</style>
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js" } }</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hurt"></div>
+<div id="hudTL" class="hud gameHud">
+  <div class="stat"><img src="./assets/ui/health.png" alt="Health"><div id="hpWrap"><div id="hp"></div></div></div>
+  <div class="stat"><img src="./assets/ui/stamina.png" alt="Stamina"><div id="stWrap"><div id="st"></div></div></div>
+  <div class="stat"><img src="./assets/ui/valor.png" alt="Valor"><span id="valor">VALOR 0</span></div>
+  <div class="stat"><img src="./assets/ui/gold.png" alt="Gold"><span id="gold">GOLD 0</span></div>
+</div>
+<div id="hudTR" class="hud gameHud">
+  <div id="stageName">SIDDUN</div>
+  <div id="stageSub">THE TREE OF LIFE</div>
+</div>
+<div id="bossHud" class="hud gameHud"><b id="bossName">FIRE DRAKE</b><div id="bossWrap"><div id="bossHp"></div></div></div>
+<div id="msg" class="hud"></div>
+<div id="sub" class="hud"></div>
+<div id="title">
+  <div class="veil"></div>
+  <div class="inner">
+    <img class="logo" src="./assets/ui/logo.png" alt="Valor Quest - Forging Chaos Into Power">
+    <h2>CHAIN OF DELDYA</h2>
+    <p>A Rygar-style action platformer through the world of Valor Quest. Fight the creatures of Deldya with a chained spiked disc, and face the Fire Drake.</p>
+    <img id="playBtn" src="./assets/ui/play_now.png" alt="Play now">
+    <div id="help">
+      <span class="desk">WASD / ARROWS move &nbsp;·&nbsp; SPACE jump &nbsp;·&nbsp; F or CLICK throw disc &nbsp;·&nbsp; M mute</span>
+    </div>
+  </div>
+</div>
+<div id="end"><h1 id="endTitle">CHAMPION</h1><p id="endText"></p><p>PRESS ANY KEY / TAP</p></div>
+<div id="touch">
+  <div id="stick"><div id="knob"></div></div>
+  <div id="bJump" class="tbtn">JUMP</div>
+  <div id="bDisc" class="tbtn">DISC</div>
+</div>
+<button id="mute" aria-label="mute">&#128266;</button>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

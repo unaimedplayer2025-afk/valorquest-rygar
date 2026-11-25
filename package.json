@@ -1,0 +1,14 @@
+{
+  "name": "valorquest-rygar",
+  "version": "1.0.0",
+  "description": "VALOR QUEST: Chain of Deldya — a Rygar-style action platformer using Valor Quest artwork",
+  "scripts": {
+    "start": "python3 -m http.server 8788",
+    "play-tests": "node tools/play-tests.js",
+    "check": "node tools/play-tests.js"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "playwright-core": "^1.64.1"
+  }
+}
