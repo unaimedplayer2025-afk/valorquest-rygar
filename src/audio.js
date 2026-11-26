@@ -1,11 +1,17 @@
-// WebAudio SFX + John's tracks (OGG with MP3 fallback via canPlayType).
+// WebAudio SFX + optional music beds (OGG with MP3 fallback via canPlayType).
 // First user gesture calls Snd.start() to unlock playback. M toggles mute.
 //
-// Title:    audio/title-theme.{ogg,mp3}  — from /workspace/wadget/audio/title-theme
-// Gameplay: audio/gameplay.{ogg,mp3}     — from /workspace/wadget/audio/gameplay
+// Music is optional. To hook up a new track later, drop
+//   audio/title-theme.{ogg,mp3}  and/or  audio/gameplay.{ogg,mp3}
+// in the audio/ folder and set the matching path in MUSIC below.
+// Missing paths are skipped, so the game runs with SFX only.
+const MUSIC = {
+  title: null, // e.g. 'audio/title-theme'
+  game: null,  // e.g. 'audio/gameplay'
+};
 const Snd = {
   ctx: null, muted: false, ready: false, unlocked: false,
-  titleAud: null, gameAud: null, musicMode: 'title',
+  titleAud: null, gameAud: null, musicMode: 'title', _tracksReady: false,
   start() {
     if (this.ctx) {
       if (this.ctx.state === 'suspended') this.ctx.resume();
@@ -24,16 +30,19 @@ const Snd = {
     return ogg ? base + '.ogg' : base + '.mp3';
   },
   _makeTracks() {
-    if (this.titleAud) return;
+    if (this._tracksReady) return;
+    this._tracksReady = true;
     const make = (base) => {
+      if (!base) return null;
       const a = new Audio(this._pick(base));
       a.loop = true;
       a.preload = 'auto';
       a.volume = 0;
+      a.addEventListener('error', () => { a._dead = true; });
       return a;
     };
-    this.titleAud = make('audio/title-theme');
-    this.gameAud = make('audio/gameplay');
+    this.titleAud = make(MUSIC.title);
+    this.gameAud = make(MUSIC.game);
   },
   setScene(mode) {
     this.musicMode = (mode === 'title' || mode === 'end') ? 'title' : 'game';
@@ -41,19 +50,19 @@ const Snd = {
   _kickMusic() {
     if (!this.unlocked || this.muted) return;
     const a = this.musicMode === 'title' ? this.titleAud : this.gameAud;
-    if (a && a.paused) {
+    if (a && !a._dead && a.paused) {
       const p = a.play();
       if (p && p.catch) p.catch(() => {});
     }
   },
   update(dt) {
-    if (!this.titleAud) return;
     const fade = 1.4;
     const tracks = [
       [this.titleAud, this.musicMode === 'title' ? 0.46 : 0],
       [this.gameAud, this.musicMode === 'game' ? 0.42 : 0],
     ];
     for (const [a, vol] of tracks) {
+      if (!a || a._dead) continue;
       const target = (!this.muted && this.unlocked) ? vol : 0;
       if (a.volume < target) a.volume = Math.min(target, a.volume + dt * fade * Math.max(target, 0.4));
       else if (a.volume > target) a.volume = Math.max(target, a.volume - dt * fade * 0.5);

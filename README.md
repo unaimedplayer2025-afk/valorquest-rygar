@@ -31,10 +31,7 @@ The game opens with a short intro: a Valor Quest rat (`images/mobs/000001.png`, 
 
 ## Music
 
-John's tracks, with OGG plus an MP3 fallback chosen through `canPlayType`. Audio unlocks on the first key or tap, and **M** mutes.
-
-- **Title / end screen:** `wadget/audio/title-theme`
-- **Gameplay (and the intro):** `wadget/audio/gameplay`
+There is no music bed in this build (sound effects still play). Audio unlocks on the first key or tap, and **M** mutes. To add a track later, drop `audio/title-theme.{ogg,mp3}` and/or `audio/gameplay.{ogg,mp3}` in the `audio/` folder and set the matching path in `MUSIC` inside `src/audio.js`.
 
 ## Combat numbers
 
